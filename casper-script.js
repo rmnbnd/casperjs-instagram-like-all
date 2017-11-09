@@ -1,5 +1,6 @@
 var utils = require('utils');
 var casper = require('casper').create();
+var fs = require('fs');
 
 var options = casper.cli.options;
 
@@ -17,6 +18,7 @@ var medias = [];
 var indexMedia = 0;
 var token;
 var initMediaPageInfo = null;
+var allLiked = 0; 
 
 casper.on('remote.message', function(msg) {
     this.echo('remote message caught: ' + msg);
@@ -193,47 +195,55 @@ function like(follower, partOfMedia, pageInfo) {
         }, "p/" + media.node.shortcode + "/?taken-by=" + follower.node.username);
     
         casper.wait(60000, function() {
-        
-            var viewPost = casper.evaluate(function(url) {
-                var url = "https://www.instagram.com/" + url;
-                var response = __utils__.sendAJAX(url, "GET");
-                if (!response) {
-                    console.log(response);
-                }
-                console.log(url);
-                return JSON.parse(response);
-            }, "p/" + media.node.shortcode + "/?__a=1");
+            utils.dump("start check contains in like folder " + new Date());
             
-            if (!viewPost.graphql.shortcode_media.viewer_has_liked) {
-                utils.dump("start post like " + new Date());
+            if (fs.exists("data/" + follower.node.username + "/like/" + media.node.shortcode + "_" + media.node.id + ".jpg")) {
+                utils.dump("file already contains - data/" + follower.node.username + "/like/" + media.node.shortcode + "_" + media.node.id + ".jpg");
                 
-//                var response = casper.base64encodeWithHeaders("https://www.instagram.com/web/likes/" + media.node.id + "/like/", "POST", null, {
-//                    "x-csrftoken": token
-//                });
-//                
-                response = JSON.parse({
-                    status: "bad"
-                });
-                
-                utils.dump(response);
-                
-                if (response.status === "ok") {
-                    utils.dump("start liked post download " + new Date());
-                    casper.download(media.node.display_url, "data/" + follower.node.username + "/like/" + media.node.shortcode + "_" + media.node.id + ".jpg");
-                    utils.dump("end liked post download " + new Date());
-                } else {
-                    utils.dump("start failed liked post download " + new Date());
-                    casper.download(media.node.display_url, "data/" + follower.node.username + "/non-like/" + media.node.shortcode + "_" + media.node.id + ".jpg");
-                    utils.dump("end failed liked post download " + new Date());
-                }
-
-                utils.dump("end post like " + new Date());
+                utils.dump("end check contains in like folder " + new Date());    
             } else {
-                utils.dump("start already liked post download " + new Date());
-                casper.download(media.node.display_url, "data/" + follower.node.username + "/like/" + media.node.shortcode + "_" + media.node.id + ".jpg");
-                utils.dump("end already liked post download " + new Date());
+                var viewPost = casper.evaluate(function(url) {
+                    var url = "https://www.instagram.com/" + url;
+                    var response = __utils__.sendAJAX(url, "GET");
+                    if (!response) {
+                        console.log(response);
+                    }
+                    console.log(url);
+                    return JSON.parse(response);
+                }, "p/" + media.node.shortcode + "/?__a=1");
+
+                if (!viewPost.graphql.shortcode_media.viewer_has_liked) {
+                    utils.dump("start post like " + new Date());
+
+    //                var response = casper.base64encodeWithHeaders("https://www.instagram.com/web/likes/" + media.node.id + "/like/", "POST", null, {
+    //                    "x-csrftoken": token
+    //                });
+    //                
+                    response = JSON.parse({
+                        status: "bad"
+                    });
+
+                    utils.dump(response);
+
+                    if (response.status === "ok") {
+                        utils.dump("start liked post download " + new Date());
+                        casper.download(media.node.display_url, "data/" + follower.node.username + "/like/" + media.node.shortcode + "_" + media.node.id + ".jpg");
+                        utils.dump("end liked post download " + new Date());
+                        utils.dump("all liked - " + allLiked++);
+                    } else {
+                        utils.dump("start failed liked post download " + new Date());
+                        casper.download(media.node.display_url, "data/" + follower.node.username + "/non-like/" + media.node.shortcode + "_" + media.node.id + ".jpg");
+                        utils.dump("end failed liked post download " + new Date());
+                    }
+
+                    utils.dump("end post like " + new Date());
+                } else {
+                    utils.dump("start already liked post download " + new Date());
+                    casper.download(media.node.display_url, "data/" + follower.node.username + "/like/" + media.node.shortcode + "_" + media.node.id + ".jpg");
+                    utils.dump("end already liked post download " + new Date());
+                }
             }
-        
+                    
             casper.then(function() {
                 indexMedia++;
                 like(follower, partOfMedia, pageInfo);
