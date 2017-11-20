@@ -46,6 +46,7 @@ casper.base64encodeWithHeaders = function (url, method, data, headers) {
                 return "";
             }
         }
+
         function sendAjaxWithHeaders(url, method, data, async, settings) {
             var xhr = new XMLHttpRequest(),
                 dataString = "",
@@ -205,18 +206,18 @@ function like(follower, partOfMedia, pageInfo) {
                 utils.dump("end check contains in like folder " + new Date());
             } else {
                 utils.dump("file doesn't exist in data folder " + new Date());
-                casper.wait(75000, function () {
-                    var viewPost = casper.evaluate(function (url) {
-                        var url = "https://www.instagram.com/" + url;
-                        var response = __utils__.sendAJAX(url, "GET");
-                        if (!response) {
-                            console.log(response);
-                        }
-                        console.log(url);
-                        return JSON.parse(response);
-                    }, "p/" + media.node.shortcode + "/?__a=1");
+                var viewPost = casper.evaluate(function (url) {
+                    var url = "https://www.instagram.com/" + url;
+                    var response = __utils__.sendAJAX(url, "GET");
+                    if (!response) {
+                        console.log(response);
+                    }
+                    console.log(url);
+                    return JSON.parse(response);
+                }, "p/" + media.node.shortcode + "/?__a=1");
 
-                    if (!viewPost.graphql.shortcode_media.viewer_has_liked) {
+                if (!viewPost.graphql.shortcode_media.viewer_has_liked) {
+                    casper.wait(75000, function () {
                         utils.dump("start post like " + new Date());
 
                         var response = casper.base64encodeWithHeaders("https://www.instagram.com/web/likes/" + media.node.id + "/like/", "POST", null, {
@@ -246,12 +247,15 @@ function like(follower, partOfMedia, pageInfo) {
                         utils.dump("all liked - " + allLiked++);
 
                         utils.dump("end post like " + new Date());
-                    } else {
+                    });
+                } else {
+                    casper.wait(25000, function () {
                         utils.dump("start already liked post download " + new Date());
                         casper.download(media.node.display_url, "data/" + follower.node.username + "/like/" + media.node.shortcode + "_" + media.node.id + ".jpg");
                         utils.dump("end already liked post download " + new Date());
-                    }
-                });
+                    });
+                }
+
             }
 
             casper.then(function () {
